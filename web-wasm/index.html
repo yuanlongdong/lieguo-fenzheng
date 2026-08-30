@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>列国纷争 - WASM版</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="join-panel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(26,15,10,0.97);border:2px solid #daa520;border-radius:12px;padding:30px 40px;text-align:center;z-index:9999;">
+    <h3 style="color:#daa520;font-size:20px;margin-bottom:10px;">选择你的阵营</h3>
+    <p style="color:#95a5a6;font-size:13px;margin-bottom:20px;">加入战国七雄之一，为你的国家攻城略地！</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <button class="join-faction-btn" data-faction="qin" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#c0392b;">秦国</button>
+      <button class="join-faction-btn" data-faction="chu" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#8e44ad;">楚国</button>
+      <button class="join-faction-btn" data-faction="qi" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#2980b9;">齐国</button>
+      <button class="join-faction-btn" data-faction="yan" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#16a085;">燕国</button>
+      <button class="join-faction-btn" data-faction="zhao" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#d35400;">赵国</button>
+      <button class="join-faction-btn" data-faction="wei" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#27ae60;">魏国</button>
+      <button class="join-faction-btn" data-faction="han" style="color:white;border:none;padding:12px 8px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;background:#f39c12;">韩国</button>
+    </div>
+  </div>
+  <div id="game-container">
+    <aside id="left-panel" class="panel">
+      <h2 class="panel-title">七雄争霸</h2>
+      <div id="faction-list"></div>
+      <h2 class="panel-title">同盟状态</h2>
+      <div id="alliance-panel"></div>
+    </aside>
+    <main id="game-main">
+      <div id="game-header">
+        <div id="game-info"></div>
+        <div id="game-controls">
+          <button id="start-btn" class="btn btn-primary">开始游戏</button>
+          <button onclick="togglePause()" class="btn">暂停</button>
+          <button onclick="doEvent()" class="btn btn-warning">触发事件</button>
+          <select onchange="setSpeed(this.value)" class="btn">
+            <option value="1">1x 速度</option>
+            <option value="2">2x 速度</option>
+            <option value="4">4x 速度</option>
+          </select>
+        </div>
+      </div>
+      <div id="map-container">
+        <canvas id="game-canvas" width="780" height="580"></canvas>
+        <div id="end-screen" class="overlay-panel">
+          <h2 id="winner-text"></h2>
+          <p class="overlay-desc">天下一统，四海归一</p>
+          <button id="restart-btn" class="btn btn-primary">再来一局</button>
+        </div>
+      </div>
+      <div id="battle-log-container">
+        <h3 class="panel-title">战报</h3>
+        <div id="battle-log"></div>
+      </div>
+    </main>
+    <aside id="right-panel" class="panel">
+      <h2 class="panel-title">玩家信息</h2>
+      <div id="player-info"></div>
+      <div id="control-panel" style="display:none">
+        <h2 class="panel-title">免费互动</h2>
+        <div class="action-row">
+          <button onclick="doLike()" class="btn btn-success">👍 点赞 (+1兵)</button>
+        </div>
+        <div class="action-row">
+          <input type="text" id="comment-input" placeholder="发送弹幕..." class="input-field" onkeypress="if(event.key==='Enter')doComment()">
+          <button onclick="doComment()" class="btn">发送</button>
+        </div>
+        <h2 class="panel-title">礼物 / 技能</h2>
+        <div id="gift-panel">
+          <div class="gift-grid">
+            <button onclick="sendGift('light')" class="gift-btn"><span class="gift-name">灯牌</span><span class="gift-price">1抖币</span></button>
+            <button onclick="sendGift('wand')" class="gift-btn"><span class="gift-name">仙女棒</span><span class="gift-price">10抖币</span></button>
+            <button onclick="sendGift('pill')" class="gift-btn"><span class="gift-name">能力药丸</span><span class="gift-price">30抖币</span></button>
+            <button onclick="sendGift('mic')" class="gift-btn"><span class="gift-name">派对话筒</span><span class="gift-price">52抖币</span></button>
+            <button onclick="sendGift('bomb')" class="gift-btn"><span class="gift-name">爱的爆炸</span><span class="gift-price">99抖币</span></button>
+            <button onclick="sendGift('mirror')" class="gift-btn"><span class="gift-name">魔法镜</span><span class="gift-price">199抖币</span></button>
+            <button onclick="sendGift('drop')" class="gift-btn"><span class="gift-name">神秘空投</span><span class="gift-price">520抖币</span></button>
+            <button onclick="sendGift('car')" class="gift-btn"><span class="gift-name">跑车</span><span class="gift-price">1200抖币</span></button>
+            <button onclick="sendGift('carnival')" class="gift-btn"><span class="gift-name">嘉年华</span><span class="gift-price">30000抖币</span></button>
+            <button onclick="sendGift('sabotage')" class="gift-btn"><span class="gift-name">离间计</span><span class="gift-price">299抖币</span></button>
+          </div>
+          <div class="target-hint">目标城池: <span id="target-city-name">点击地图选择</span><br><small>爱的爆炸/嘉年华需要选择目标</small></div>
+        </div>
+        <h2 class="panel-title">合纵连横</h2>
+        <div class="action-row">
+          <button onclick="doAlly()" class="btn btn-alliance">结盟</button>
+          <button onclick="doBreakAlly()" class="btn btn-danger">背盟</button>
+        </div>
+        <h2 class="panel-title">我方武将</h2>
+        <div id="general-panel"></div>
+      </div>
+    </aside>
+  </div>
+  <script src="lieguo.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/wasm-game.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    var gameInst = null, uiInst = null, mapInst = null;
+    var loadingTip = document.createElement('div');
+    loadingTip.id = 'wasm-loading';
+    loadingTip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(26,15,10,0.95);border:2px solid #daa520;border-radius:12px;padding:40px 60px;text-align:center;z-index:10000;color:#daa520;font-size:18px;';
+    loadingTip.innerHTML = '⚙️ 正在加载 C++ 引擎 (WebAssembly)...<br><small style="color:#95a5a6;font-size:12px;">首次加载需要下载编译好的 WASM 模块</small>';
+    document.body.appendChild(loadingTip);
+
+    async function initWASMGame() {
+      try {
+        gameInst = new Game();
+        await gameInst.initAsync();
+        var canvas = document.getElementById('game-canvas');
+        mapInst = new MapRenderer(canvas, gameInst);
+        uiInst = new UIManager(gameInst, mapInst);
+        uiInst.update();
+        loadingTip.style.display = 'none';
+        setTimeout(function() {
+          if (gameInst.state === 'idle') { gameInst.start(); document.getElementById('start-btn').textContent = '游戏中...'; document.getElementById('start-btn').disabled = true; }
+          gameInst.joinFaction('qin');
+          document.getElementById('join-panel').style.display = 'none';
+          document.getElementById('control-panel').style.display = 'block';
+        }, 500);
+        function renderLoop() { mapInst.render(); requestAnimationFrame(renderLoop); }
+        renderLoop();
+      } catch(e) {
+        console.error('WASM Init error:', e);
+        loadingTip.innerHTML = '<h3 style="color:#e74c3c;">WASM 加载失败</h3><p style="color:#95a5a6;font-size:12px;">' + e.message + '</p>';
+      }
+    }
+
+    document.querySelectorAll('.join-faction-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (gameInst && gameInst.joinFaction(btn.dataset.faction)) {
+          document.getElementById('join-panel').style.display = 'none';
+          document.getElementById('control-panel').style.display = 'block';
+        }
+      });
+    });
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initWASMGame);
+    else initWASMGame();
+
+    window.doLike = function() {
+      if (gameInst && gameInst.playerFaction) {
+        gameInst.like();
+        var city = gameInst.cities.find(function(c) { return c.faction === gameInst.playerFaction; });
+        if (city && mapInst) mapInst.addEffect('gift', city.x, city.y, { text: '+1', color: '#2ecc71', duration: 800 });
+      }
+    };
+    window.doComment = function() {
+      var input = document.getElementById('comment-input');
+      if (input.value.trim() && gameInst) { gameInst.comment(input.value.trim()); input.value = ''; }
+    };
+    window.sendGift = function(giftId) {
+      if (!gameInst || !gameInst.playerFaction) return;
+      var gift = GIFTS.find(function(g) { return g.id === giftId; });
+      if (!gift) return;
+      var targetId = uiInst && uiInst.selectedTargetCity ? uiInst.selectedTargetCity.id : null;
+      if ((gift.effect === 'damage' || gift.effect === 'capture') && !targetId) { alert('请先在地图上点击选择目标城池'); return; }
+      var result = gameInst.sendGift(giftId, targetId);
+      if (result.success && mapInst) {
+        var c = targetId ? gameInst.cities.find(function(x) { return x.id === targetId; }) : gameInst.cities.find(function(x) { return x.faction === gameInst.playerFaction; });
+        if (c) mapInst.addEffect('gift', c.x, c.y, { text: gift.name, color: '#f1c40f' });
+      } else if (!result.success) alert(result.msg);
+    };
+    window.doAlly = function() {
+      if (!gameInst || !gameInst.playerFaction) return;
+      if (gameInst.elapsedTime < 1200) { alert('合纵连横将在20分钟后解锁'); return; }
+      var alive = Object.values(gameInst.factions).filter(function(f) {
+        return f.alive && f.id !== gameInst.playerFaction && !gameInst.alliances.some(function(a) { return a.members.indexOf(f.id) >= 0; });
+      });
+      if (alive.length >= 1) gameInst.createAlliance([gameInst.playerFaction, alive[0].id]);
+    };
+    window.doBreakAlly = function() { if (gameInst && gameInst.playerFaction) gameInst.breakAlliance(gameInst.playerFaction); };
+    window.doEvent = function() { if (gameInst) gameInst.triggerRandomEvent(); };
+    window.togglePause = function() {
+      if (!gameInst) return;
+      var btn = document.getElementById('pause-btn');
+      if (gameInst.state === 'playing') { gameInst.pause(); btn.textContent = '继续'; }
+      else if (gameInst.state === 'paused') { gameInst.resume(); btn.textContent = '暂停'; }
+    };
+    window.setSpeed = function(val) { CONFIG.gameSpeed = parseFloat(val); if (gameInst) gameInst.setSpeed(val); };
+  </script>
+</body>
+</html>
